@@ -1,15 +1,15 @@
-import React from 'react'
-import ReactDOM from 'react-dom'
-import extend from 'extend'
-import { Icon } from './icon'
+import React from "react";
+import ReactDOM from "react-dom";
+import extend from "extend";
+import { Icon } from "./icon";
 
-let Dropzone = null
+let Dropzone = null;
 
 export class DropzoneComponent extends React.Component {
-  constructor (props) {
-    super(props)
+  constructor(props) {
+    super(props);
 
-    this.state = { files: [] }
+    this.state = { files: [] };
   }
 
   /**
@@ -19,66 +19,74 @@ export class DropzoneComponent extends React.Component {
    * please consult
    * http://www.dropzonejs.com/#configuration
    */
-  getDjsConfig () {
-    let options = null
+  getDjsConfig() {
+    let options = null;
     const defaults = {
-      url: this.props.config.postUrl ? this.props.config.postUrl : null
-    }
+      url: this.props.config.postUrl ? this.props.config.postUrl : null,
+    };
 
     if (this.props.djsConfig) {
-      options = extend(true, {}, defaults, this.props.djsConfig)
+      options = extend(true, {}, defaults, this.props.djsConfig);
     } else {
-      options = defaults
+      options = defaults;
     }
 
-    return options
+    return options;
   }
 
   /**
    * React 'componentDidMount' method
    * Sets up dropzone.js with the component.
    */
-  componentDidMount () {
-    const options = this.getDjsConfig()
+  componentDidMount() {
+    const options = this.getDjsConfig();
 
-    Dropzone = Dropzone || require('dropzone')
-    Dropzone.autoDiscover = false
+    Dropzone = Dropzone || require("dropzone");
+    Dropzone.autoDiscover = false;
 
     if (!this.props.config.postUrl && !this.props.eventHandlers.drop) {
-      console.info('Neither postUrl nor a "drop" eventHandler specified, the React-Dropzone component might misbehave.')
+      console.info(
+        'Neither postUrl nor a "drop" eventHandler specified, the React-Dropzone component might misbehave.'
+      );
     }
 
-    var dropzoneNode = this.props.config.dropzoneSelector || ReactDOM.findDOMNode(this)
-    this.dropzone = new Dropzone(dropzoneNode, options)
-    this.setupEvents()
+    var dropzoneNode =
+      this.props.config.dropzoneSelector || ReactDOM.findDOMNode(this);
+    this.dropzone = new Dropzone(dropzoneNode, options);
+
+    this.dropzone.on("maxfilesexceeded", function (file) {
+      this.removeFile(file);
+    });
+
+    this.setupEvents();
   }
 
   /**
    * React 'componentWillUnmount'
    * Removes dropzone.js (and all its globals) if the component is being unmounted
    */
-  componentWillUnmount () {
+  componentWillUnmount() {
     if (this.dropzone) {
-      const files = this.dropzone.getActiveFiles()
+      const files = this.dropzone.getActiveFiles();
 
       if (files.length > 0) {
         // Well, seems like we still have stuff uploading.
         // This is dirty, but let's keep trying to get rid
         // of the dropzone until we're done here.
-        this.queueDestroy = true
+        this.queueDestroy = true;
 
         const destroyInterval = window.setInterval(() => {
           if (this.queueDestroy === false) {
-            return window.clearInterval(destroyInterval)
+            return window.clearInterval(destroyInterval);
           }
 
           if (this.dropzone.getActiveFiles().length === 0) {
-            this.dropzone = this.destroy(this.dropzone)
-            return window.clearInterval(destroyInterval)
+            this.dropzone = this.destroy(this.dropzone);
+            return window.clearInterval(destroyInterval);
           }
-        }, 500)
+        }, 500);
       } else {
-        this.dropzone = this.destroy(this.dropzone)
+        this.dropzone = this.destroy(this.dropzone);
       }
     }
   }
@@ -87,12 +95,16 @@ export class DropzoneComponent extends React.Component {
    * React 'componentDidUpdate'
    * If the Dropzone hasn't been created, create it
    */
-  componentDidUpdate () {
-    this.queueDestroy = false
+  componentDidUpdate() {
+    this.queueDestroy = false;
 
     if (!this.dropzone) {
-      const dropzoneNode = this.props.config.dropzoneSelector || ReactDOM.findDOMNode(this)
-      this.dropzone = new Dropzone(dropzoneNode, this.getDjsConfig())
+      const dropzoneNode =
+        this.props.config.dropzoneSelector || ReactDOM.findDOMNode(this);
+      this.dropzone = new Dropzone(dropzoneNode, this.getDjsConfig());
+      this.dropzone.on("maxfilesexceeded", function (file) {
+        this.removeFile(file);
+      });
     }
   }
 
@@ -100,33 +112,49 @@ export class DropzoneComponent extends React.Component {
    * React 'componentWillUpdate'
    * Update Dropzone options each time the component updates.
    */
-  componentWillUpdate () {
-    let djsConfigObj
-    let postUrlConfigObj
+  componentWillUpdate() {
+    let djsConfigObj;
+    let postUrlConfigObj;
 
-    djsConfigObj = this.props.djsConfig ? this.props.djsConfig : {}
+    djsConfigObj = this.props.djsConfig ? this.props.djsConfig : {};
 
     try {
-      postUrlConfigObj = this.props.config.postUrl ? { url: this.props.config.postUrl } : {}
+      postUrlConfigObj = this.props.config.postUrl
+        ? { url: this.props.config.postUrl }
+        : {};
     } catch (err) {
-      postUrlConfigObj = {}
+      postUrlConfigObj = {};
     }
 
-    this.dropzone.options = extend(true, {}, this.dropzone.options, djsConfigObj, postUrlConfigObj)
+    this.dropzone.options = extend(
+      true,
+      {},
+      this.dropzone.options,
+      djsConfigObj,
+      postUrlConfigObj
+    );
   }
 
   /**
    * React 'render'
    */
-  render () {
-    const icons = []
-    const { files } = this.state
-    const { config } = this.props
-    const className = (this.props.className) ? 'filepicker dropzone ' + this.props.className : 'filepicker dropzone'
+  render() {
+    const icons = [];
+    const { files } = this.state;
+    const { config } = this.props;
+    const className = this.props.className
+      ? "filepicker dropzone " + this.props.className
+      : "filepicker dropzone";
 
-    if (config.showFiletypeIcon && config.iconFiletypes && (!files || files.length < 1)) {
+    if (
+      config.showFiletypeIcon &&
+      config.iconFiletypes &&
+      (!files || files.length < 1)
+    ) {
       for (var i = 0; i < this.props.config.iconFiletypes.length; i = i + 1) {
-        icons.push(<Icon filetype={config.iconFiletypes[i]} key={'icon-component' + i} />)
+        icons.push(
+          <Icon filetype={config.iconFiletypes[i]} key={"icon-component" + i} />
+        );
       }
     }
 
@@ -136,11 +164,14 @@ export class DropzoneComponent extends React.Component {
           {icons}
           {this.props.children}
         </form>
-      )
+      );
     } else {
       return (
-        <div className={className}> {icons} {this.props.children} </div>
-      )
+        <div className={className}>
+          {" "}
+          {icons} {this.props.children}{" "}
+        </div>
+      );
     }
   }
 
@@ -148,69 +179,75 @@ export class DropzoneComponent extends React.Component {
    * Takes event handlers in this.props.eventHandlers
    * and binds them to dropzone.js events
    */
-  setupEvents () {
-    const eventHandlers = this.props.eventHandlers
+  setupEvents() {
+    const eventHandlers = this.props.eventHandlers;
 
-    if (!this.dropzone || !eventHandlers) return
+    if (!this.dropzone || !eventHandlers) return;
 
     for (var eventHandler in eventHandlers) {
-      if (eventHandlers.hasOwnProperty(eventHandler) && eventHandlers[eventHandler]) {
+      if (
+        eventHandlers.hasOwnProperty(eventHandler) &&
+        eventHandlers[eventHandler]
+      ) {
         // Check if there's an array of event handlers
-        if (Object.prototype.toString.call(eventHandlers[eventHandler]) === '[object Array]') {
+        if (
+          Object.prototype.toString.call(eventHandlers[eventHandler]) ===
+          "[object Array]"
+        ) {
           for (var i = 0; i < eventHandlers[eventHandler].length; i = i + 1) {
             // Check if it's an init handler
-            if (eventHandler === 'init') {
-              eventHandlers[eventHandler][i](this.dropzone)
+            if (eventHandler === "init") {
+              eventHandlers[eventHandler][i](this.dropzone);
             } else {
-              this.dropzone.on(eventHandler, eventHandlers[eventHandler][i])
+              this.dropzone.on(eventHandler, eventHandlers[eventHandler][i]);
             }
           }
         } else {
-          if (eventHandler === 'init') {
-            eventHandlers[eventHandler](this.dropzone)
+          if (eventHandler === "init") {
+            eventHandlers[eventHandler](this.dropzone);
           } else {
-            this.dropzone.on(eventHandler, eventHandlers[eventHandler])
+            this.dropzone.on(eventHandler, eventHandlers[eventHandler]);
           }
         }
       }
     }
 
-    this.dropzone.on('addedfile', (file) => {
-      if (!file) return
+    this.dropzone.on("addedfile", (file) => {
+      if (!file) return;
 
-      const files = this.state.files || []
+      const files = this.state.files || [];
 
-      files.push(file)
-      this.setState({ files })
-    })
+      files.push(file);
+      this.setState({ files });
+    });
 
-    this.dropzone.on('removedfile', (file) => {
-      if (!file) return
+    this.dropzone.on("removedfile", (file) => {
+      if (!file) return;
 
-      const files = this.state.files || []
+      const files = this.state.files || [];
       files.forEach((fileInFiles, i) => {
         if (fileInFiles.name === file.name && fileInFiles.size === file.size) {
-          files.splice(i, 1)
+          files.splice(i, 1);
         }
-      })
+      });
 
-      this.setState({ files })
-    })
+      this.setState({ files });
+    });
   }
 
   /**
    * Removes ALL listeners and Destroys dropzone. see https://github.com/enyo/dropzone/issues/1175
    */
-  destroy (dropzone) {
-    dropzone.off()
-    return dropzone.destroy()
+  destroy(dropzone) {
+    dropzone.off();
+    return dropzone.destroy();
   }
 }
 
 DropzoneComponent.defaultProps = {
   djsConfig: {},
   config: {},
-  eventHandlers: {}
-}
+  eventHandlers: {},
+};
 
-export default DropzoneComponent
+export default DropzoneComponent;
